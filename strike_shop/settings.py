@@ -29,7 +29,7 @@ SECRET_KEY = 'django-insecure-q2(c-qy)$2316#g6_%o^76njnn0qi5p+_q$6_*c0!kh1e9mw2x
 PRODUCTION = os.getenv('PRODUCTION', 'False').lower() == 'true'
 DEBUG = True
 
-ALLOWED_HOSTS = ["localhost", "127.0.0.1", "angga-tri41-strikeshop.pbp.cs.ui.ac.id."]
+ALLOWED_HOSTS = ["localhost", "127.0.0.1", "angga-tri41-strikeshop.pbp.cs.ui.ac.id"]
 
 
 # Application definition
