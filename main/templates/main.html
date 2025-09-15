@@ -10,22 +10,27 @@
 <p>{{ class }}</p> 
 
 <a href="{% url 'main:create_item' %}">
-  <button>+ Add Item</button>
+  <button>Add</button>
 </a>
 
 <hr>
 
 {% if not item_list %}
-<p>Belum ada data item pada strike shop.</p>
+<p>Belum ada item yang ditambahkan pada strike shop.</p>
 {% else %}
 
 {% for item in item_list %}
 <div>
   <h2><a href="{% url 'main:show_item' item.id %}">{{ item.name }}</a></h2>
 
-  <p><b>{{ item.get_category_display }}</b>{% if item.is_featured %} | 
-    <b>Featured</b>{% endif %}{% if item.is_news_hot %} | 
-    <b>Hot</b>{% endif %} | <b>Views: {{ item.views }}</b> </p>
+  <p>
+    <b>{{ item.get_category_display }}</b>
+    {% if item.is_featured %} 
+    | 
+    <b>Featured</b>{% endif %} 
+    | 
+    <b>Views: {{ item.views }}</b> 
+  </p>
 
   {% if item.thumbnail %}
   <img src="{{ item.thumbnail }}" alt="thumbnail" width="150" height="100">
@@ -34,7 +39,7 @@
 
   <p>{{ item.description|truncatewords:25 }}</p>
 
-  <p><a href="{% url 'main:show_item' item.id %}"><button>Read More</button></a></p>
+  <p><a href="{% url 'main:show_item' item.id %}"><button>Detail</button></a></p>
 </div>
 
 <hr>
