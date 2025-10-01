@@ -39,7 +39,7 @@
         
         <!-- Mobile Menu Button -->
         <div class="md:hidden flex items-center">
-          <button class="mobile-menu-button p-2 text-gray-600 hover:text-gray-900 transition-colors">
+          <button class="mobile-menu-button p-2 text-white hover:text-gray-300 transition-colors">
             <span class="sr-only">Open menu</span>
             <div class="w-6 h-6 flex flex-col justify-center items-center">
               <span class="bg-current block transition-all duration-300 ease-out h-0.5 w-6 rounded-sm"></span>
@@ -48,44 +48,42 @@
             </div>
           </button>
         </div>
-      </div>
-    </div>
-    <!-- Mobile Menu -->
-    <div class="mobile-menu hidden md:hidden bg-white border-t border-gray-200">
-      <div class="px-6 py-4 space-y-4">
-        <!-- Mobile Navigation Links -->
-        <div class="space-y-1">
-          <a href="/" class="text-white hover:text-gray-700 font-medium transition-colors">
-            Home
+        <!-- Mobile Menu -->
+        <div class="mobile-menu hidden md:hidden bg-black border-t border-gray-200">
+          <div class="px-6 py-4 space-y-4">
+            <!-- Mobile Navigation Links -->
+            <div class="space-y-1">
+              <a href="/" class="text-white hover:text-gray-400 font-medium transition-colors">
+                Home
+              </a>
+              <a href="{% url 'main:create_product' %}" class="text-white hover:text-gray-400 font-medium transition-colors">
+                Create Product
+              </a>
+        </div>
+    
+    <!-- Mobile User Section -->
+    <div class="border-t border-gray-200 pt-4">
+      {% if user.is_authenticated %}
+        <div class="mb-4">
+          <div class="font-medium text-white">{{ name|default:user.username }}</div>
+          <div class="text-sm text-gray-300">{{ npm|default:"Student" }} - {{ class|default:"Class" }}</div>
+        </div>
+        <a href="{% url 'main:logout' %}" class="block text-red-500 hover:text-red-700 font-medium py-3 transition-colors">
+          Logout
+        </a>
+      {% else %}
+        <div class="space-y-3">
+          <a href="{% url 'main:login' %}" class="block text-white hover:text-gray-400 font-medium py-3 transition-colors">
+            Login
           </a>
-          <a href="{% url 'main:create_product' %}" class="text-white hover:text-gray-700 font-medium transition-colors">
-            Create Product
+          <a href="{% url 'main:register' %}" class="block bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded text-center transition-colors">
+            Register
           </a>
         </div>
-        
-        <!-- Mobile User Section -->
-        <div class="border-t border-gray-200 pt-4">
-          {% if user.is_authenticated %}
-            <div class="mb-4">
-              <div class="font-medium text-gray-900">{{ name|default:user.username }}</div>
-              <div class="text-sm text-gray-500">{{ npm|default:"Student" }} - {{ class|default:"Class" }}</div>
-            </div>
-            <a href="{% url 'main:logout' %}" class="block text-red-600 hover:text-red-700 font-medium py-3 transition-colors">
-              Logout
-            </a>
-          {% else %}
-            <div class="space-y-3">
-              <a href="{% url 'main:login' %}" class="block text-gray-600 hover:text-gray-900 font-medium py-3 transition-colors">
-                Login
-              </a>
-              <a href="{% url 'main:register' %}" class="block bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded text-center transition-colors">
-                Register
-              </a>
-            </div>
-          {% endif %}
-        </div>
-      </div>
+      {% endif %}
     </div>
+  </div>
+</div>
     <script>
       const btn = document.querySelector("button.mobile-menu-button");
       const menu = document.querySelector(".mobile-menu");
