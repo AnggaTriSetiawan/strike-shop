@@ -23,7 +23,7 @@ class Product(models.Model):
     views = models.PositiveIntegerField(default=0)
     stock = models.PositiveIntegerField(default=0)
     brand = models.CharField(max_length=50, default="Unknown")
-    rating = models.DecimalField(max_digits=2, decimal_places=1, default=0.0)
+    rating = models.DecimalField(max_digits=2, decimal_places=1, default=5.0)
     
     def __str__(self):
         return self.name
