@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
+
 {% block meta %}
 <title>Register - Strike Shop</title>
 {% endblock meta %}
@@ -41,7 +42,7 @@
         </div>
       {% endif %}
 
-      <form method="POST" action="" class="space-y-5">
+      <form id="register-form" method="POST" action="" class="space-y-6">
         {% csrf_token %}
         
         <div>
@@ -117,4 +118,45 @@
     </div>
   </div>
 </div>
+<script>
+document.getElementById('register-form').addEventListener('submit', async function(event) {
+  event.preventDefault(); 
+
+  const form = event.target;
+  const formData = new FormData(form);
+
+  const submitBtn = form.querySelector('button[type="submit"]');
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Creating Account...';
+
+  try {
+    const response = await fetch("{% url 'main:ajax_register' %}", {
+      method: 'POST',
+      body: formData,
+      headers: {
+        'X-CSRFToken': form.querySelector('[name=csrfmiddlewaretoken]').value,
+      },
+    });
+
+    const result = await response.json();
+
+    if (response.ok && result.success) {
+      showToast('Success', result.message);
+      setTimeout(() => {
+        window.location.href = "{% url 'main:login' %}";
+      }, 1000);
+    } else {
+      showToast('Register Failed', result.message);
+    }
+
+  } catch (error) {
+    console.error('Error during AJAX register:', error);
+    showToast('Error', 'Something went wrong. Please try again.');
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Create Account';
+  }
+});
+</script>
+
 {% endblock content %}

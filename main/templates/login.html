@@ -41,7 +41,7 @@
         </div>
       {% endif %}
 
-      <form method="POST" action="" class="space-y-6">
+      <form id="login-form" method="POST" action="" class="space-y-6">
         {% csrf_token %}
         
         <div>
@@ -105,4 +105,40 @@
     </div>
   </div>
 </div>
+<script>
+document.getElementById('login-form').addEventListener('submit', async function(event) {
+  event.preventDefault(); 
+
+  const form = event.target;
+  const formData = new FormData(form);
+
+  try {
+    const response = await fetch("{% url 'main:ajax_login' %}", {
+      method: 'POST',
+      body: formData,
+      headers: {
+        'X-CSRFToken': form.querySelector('[name=csrfmiddlewaretoken]').value,
+      },
+    });
+
+    const result = await response.json();
+
+    if (response.ok && result.success) {
+      showToast('Success', result.message);
+      setTimeout(() => {
+        window.location.href = "{% url 'main:show_main' %}";
+      }, 500);
+
+    } else {
+      showToast('Login Failed', result.message);
+    }
+
+  } catch (error) {
+    console.error('Error during AJAX login:', error);
+    showToast('Error', 'Something went wrong. Please try again.');
+  }
+});
+</script>
+
+
 {% endblock content %}

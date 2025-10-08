@@ -2,11 +2,12 @@
 {% load static %}
 
 {% block meta %}
-<title>Strike Shop</title>
+<name>Strike Shop</name>
 {% endblock meta %}
 
 {% block content %}
 {% include 'navbar.html' %}
+{% include 'modal.html' %}
 <div class="bg-gray-900 w-full pt-16 min-h-screen">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
@@ -15,42 +16,253 @@
       <p class="text-white">Stay updated with the latest football product</p>
     </div>
 
+    <!-- Button to open modal -->
+    <button onclick="showModal()" 
+      class="inline-flex items-center px-4 py-2 bg-white text-blue-600 font-semibold outline outline-2 outline-blue-600 outline-offset-[-2px] rounded-md hover:bg-blue-600 hover:text-white transition-colors mb-4">
+      Create Product by AJAX
+    </button>
+
+    <!-- Refresh Button -->
+  <button onclick="refreshProducts()" 
+    class="inline-flex items-center px-4 py-2 bg-gray-200 text-gray-800 rounded-md font-medium hover:bg-gray-300 transition">
+    🔄 Refresh
+  </button>
+
     <!-- Filter Section -->
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8 bg-white rounded-lg border border-gray-200 p-4">
       <div class="flex space-x-3 mb-4 sm:mb-0">
-    <a href="?" class="{% if request.GET.filter == 'all' or not request.GET.filter %} bg-blue-600 text-white{% else %}bg-white text-gray-700 border border-gray-300{% endif %} px-4 py-2 rounded-md font-medium transition-colors">
-      All Product
-    </a>
-    <a href="?filter=my" class="{% if request.GET.filter == 'my' %} bg-blue-600 text-white{% else %}bg-white text-gray-700 border border-gray-300{% endif %} px-4 py-2 rounded-md font-medium transition-colors">
-      My Product
-    </a>
-</div>
+        <a id="filter-all" 
+   class="px-4 py-2 rounded-md font-medium transition-colors cursor-pointer">
+  All Product
+</a>
+<a id="filter-my" 
+   class="px-4 py-2 rounded-md font-medium transition-colors cursor-pointer">
+  My Product
+</a>
+      </div>
       {% if user.is_authenticated %}
-        <div class="text-sm text-gray-500">
-          Last login: {{ last_login }}
-        </div>
+        <div class="text-sm text-gray-500">Last login: {{ last_login }}</div>
       {% endif %}
     </div>
 
-    <!-- News Grid -->
-    {% if not product_list %}
-      <div class="bg-white rounded-lg border border-gray-200 p-12 text-center">
-        <div class="w-32 h-32 mx-auto mb-4">
-          <img src="{% static 'image/no-product.png' %}" alt="No product available" class="w-full h-full object-contain">
-        </div>
-        <h3 class="text-lg font-medium text-gray-900 mb-2">No product found</h3>
-        <p class="text-gray-500 mb-6">Be the first to create football product.</p>
-        <a href="{% url 'main:create_product' %}" class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors">
-          Create Product
-        </a>
+    <!-- Loading State -->
+    <div id="loading" class="bg-white rounded-lg border border-gray-200 p-12 text-center hidden">
+      <svg class="animate-spin h-8 w-8 text-blue-600 inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+      </svg>
+      <p class="text-gray-600 mt-3">Loading product...</p>
+    </div>
+
+    <!-- Error State -->
+    <div id="error" class="hidden text-center text-red-600 font-medium p-6">
+      Failed to load products. Please try again later.
+    </div>
+
+    <!-- Product Grid -->
+    <div id="grid" class="hidden"></div>
+
+    <!-- Empty State -->
+    <div id="empty" class="bg-white rounded-lg border border-gray-200 p-12 text-center hidden">
+      <div class="w-32 h-32 mx-auto mb-4">
+        <img src="{% static 'image/no-product.png' %}" alt="No product available" class="w-full h-full object-contain">
       </div>
-    {% else %}
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {% for product in product_list %}
-          {% include 'card_product.html' with product=product %}
-        {% endfor %}
-      </div>
-    {% endif %}
+      <h3 class="text-lg font-medium text-gray-900 mb-2">No product found</h3>
+      <p class="text-gray-500 mb-6">Be the first to share football product with the friends.</p>
+      <button onclick="showModal()" 
+        class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors">
+        Create Product
+      </button>
+    </div>
+
   </div>
 </div>
+
+<script>
+const PRODUCT_API_ENDPOINT = "{% url 'main:show_json' %}";
+const CURRENT_USER_ID = "{{ user.id|default_if_none:'' }}";
+const loadingSpinner = document.getElementById('loading');
+const errorMessage = document.getElementById('error');
+const emptyStateDisplay = document.getElementById('empty');
+const productGridContainer = document.getElementById('grid');
+const showAllProductButton = document.getElementById('filter-all');
+const showMyProductButton = document.getElementById('filter-my');
+
+let activeFilter = 'all';
+let allProductData = [];
+
+function updateFilterButtonsAppearance() {
+  const activeClass = "bg-blue-600 text-white border border-blue-600";
+  const inactiveClass = "bg-white text-gray-700 border border-gray-300";
+
+  if (activeFilter === 'all') {
+    showAllProductButton.className = `px-4 py-2 rounded-md font-medium transition-colors cursor-pointer ${activeClass}`;
+    showMyProductButton.className = `px-4 py-2 rounded-md font-medium transition-colors cursor-pointer ${inactiveClass}`;
+  } else {
+    showMyProductButton.className = `px-4 py-2 rounded-md font-medium transition-colors cursor-pointer ${activeClass}`;
+    showAllProductButton.className = `px-4 py-2 rounded-md font-medium transition-colors cursor-pointer ${inactiveClass}`;
+  }
+}
+
+function displayPageSection({ showLoading = false, showError = false, showEmpty = false, showGrid = false }) {
+  loadingSpinner.classList.toggle('hidden', !showLoading);
+  errorMessage.classList.toggle('hidden', !showError);
+  emptyStateDisplay.classList.toggle('hidden', !showEmpty);
+  productGridContainer.classList.toggle('hidden', !showGrid);
+  if (showGrid) productGridContainer.className = 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6';
+}
+
+function buildProductCard(item) {
+  const article = document.createElement('article');
+  article.className = 'bg-white rounded-lg border border-gray-200 hover:shadow-lg transition flex flex-col h-full';
+  const editDeleteHtml = CURRENT_USER_ID && Number(CURRENT_USER_ID) === Number(item.user_id)
+    ? `<div class='flex space-x-2'>
+         <button onclick='showEditModal(${JSON.stringify(item)})' class='text-gray-600 hover:text-gray-700 text-sm'>Edit</button>
+         <button onclick='openDeleteModal("${item.id}")' class='text-red-600 hover:text-red-700 text-sm'>Delete</button>
+       </div>` : '';
+  
+  article.innerHTML = `
+    <div class="aspect-[16/9] relative overflow-hidden">
+      ${item.thumbnail ? `<img src="${item.thumbnail}" class="w-full h-full object-cover">` :
+      `<div class="w-full h-full flex items-center justify-center bg-gray-100 text-gray-400">No Image</div>`}
+      <div class="absolute top-3 left-3">
+        <span class="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium bg-blue-600 text-white">
+          ${item.category}
+        </span>
+      </div>
+    </div>
+    <div class="p-5 flex flex-col flex-1">
+      <h3 class="text-lg font-semibold text-gray-900 mb-2">${item.name}</h3>
+      <p class="text-gray-600 text-sm mb-4 line-clamp-3">${item.description}</p>
+      <div class="mt-auto pt-3 border-t flex justify-between items-center">
+        <button onclick='openProductModal("${item.id}")' class="text-blue-600 hover:text-blue-700 font-medium text-sm">Read more</button>
+        ${editDeleteHtml}
+      </div>
+    </div>`;
+  return article;
+}
+
+function renderProducts(products) {
+  productGridContainer.innerHTML = '';
+  products.forEach(p => productGridContainer.appendChild(buildProductCard(p)));
+}
+
+function filterProducts() {
+  updateFilterButtonsAppearance();
+  const filtered = activeFilter === 'all'
+    ? allProductData
+    : allProductData.filter(p => Number(p.user_id) === Number(CURRENT_USER_ID));
+
+  if (!filtered.length) displayPageSection({ showEmpty: true });
+  else { renderProducts(filtered); displayPageSection({ showGrid: true }); }
+}
+
+async function fetchProductFromServer() {
+  try {
+    displayPageSection({ showLoading: true });
+    const res = await fetch(PRODUCT_API_ENDPOINT);
+    if (!res.ok) throw new Error();
+    allProductData = await res.json();
+    filterProducts();
+  } catch {
+    displayPageSection({ showError: true });
+  }
+}
+
+async function openProductModal(productId) {
+  
+  let modal = document.getElementById('productDetailModal');
+  let modalContent = document.getElementById('productModalContent');
+
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'productDetailModal';
+    modal.className = 'fixed inset-0 bg-black/50 z-[70] hidden flex items-center justify-center';
+    modal.innerHTML = `
+      <div id="productModalContent" class="bg-white rounded-lg shadow-xl w-11/12 md:w-2/3 lg:w-1/2 max-h-[80vh] overflow-y-auto opacity-0 scale-95 transition-all duration-200">
+        <div class="p-5 border-b flex justify-between items-center">
+          <h2 id="detailName" class="text-2xl font-semibold text-gray-900">Loading...</h2>
+          <button onclick="closeProductModal()" class="text-gray-400 hover:text-gray-700 text-xl">&times;</button>
+        </div>
+        <div class="p-5 space-y-4">
+          <img id="detailThumbnail" src="" alt="Product image" class="w-full max-h-[400px] object-contain rounded-lg border bg-gray-50 mx-auto">
+          <p id="detailDescription" class="text-gray-700 leading-relaxed"></p>
+          <div class="text-sm text-gray-600 space-y-1">
+            <p><strong>Category:</strong> <span id="detailCategory"></span></p>
+            <p><strong>Price:</strong> Rp. <span id="detailPrice"></span></p>
+            <p><strong>Stock:</strong> <span id="detailStock"></span></p>
+            <p><strong>Views:</strong> <span id="detailViews"></span></p>
+            <p><strong>Seller:</strong> <span id="detailSeller"></span></p>
+            <p><strong>Brand:</strong> <span id="detailBrand"></span></p>
+            <p><strong>Rating:</strong> <span id="detailRating"></span></p>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+    modalContent = document.getElementById('productModalContent');
+  }
+
+  document.getElementById('detailName').textContent = 'Loading...';
+  document.getElementById('detailRating').textContent = '';
+  document.getElementById('detailDescription').textContent = '';
+  document.getElementById('detailCategory').textContent = '';
+  document.getElementById('detailPrice').textContent = '';
+  document.getElementById('detailViews').textContent = '';
+  document.getElementById('detailSeller').textContent = '';
+  document.getElementById('detailThumbnail').src = '';
+
+  modal.classList.remove('hidden');
+  setTimeout(() => {
+    modalContent.classList.replace('opacity-0', 'opacity-100');
+    modalContent.classList.replace('scale-95', 'scale-100');
+  }, 50);
+
+  try {
+    await fetch(`/ajax-increment-views/${productId}/`, { method: "POST" });
+    const res = await fetch(`/json/${productId}/`);
+    if (!res.ok) throw new Error('Failed to fetch product');
+    const product = await res.json();
+
+    document.getElementById('detailName').textContent = product.name;
+    document.getElementById('detailDescription').textContent = product.description;
+    document.getElementById('detailCategory').textContent = product.category;
+    document.getElementById('detailPrice').textContent = product.price;
+    document.getElementById('detailViews').textContent = product.views;
+    document.getElementById('detailRating').textContent = product.rating;
+    document.getElementById('detailStock').textContent = product.stock;
+    document.getElementById('detailBrand').textContent = product.brand;
+    document.getElementById('detailSeller').textContent = product.user_username || 'Unknown';
+    document.getElementById('detailThumbnail').src = product.thumbnail || 'https://via.placeholder.com/400x300?text=No+Image';
+  } catch (err) {
+    document.getElementById('detailName').textContent = 'Error';
+    document.getElementById('detailDescription').textContent = 'Could not load product.';
+  }
+}
+
+function closeProductModal() {
+  const modal = document.getElementById('productDetailModal');
+  const modalContent = document.getElementById('productModalContent');
+  modalContent.classList.replace('opacity-100', 'opacity-0');
+  modalContent.classList.replace('scale-100', 'scale-95');
+  setTimeout(() => modal.classList.add('hidden'), 150);
+}
+
+// Refresh product 
+function refreshProducts() {
+  showToast("Refreshing", "Showing latest products...");
+  fetchProductFromServer();
+}
+
+// Refresh product list when product added, edited, or deleted
+document.addEventListener('productAdded', fetchProductFromServer);
+
+// Filter button listeners
+showAllProductButton.addEventListener('click', () => { activeFilter = 'all'; filterProducts(); });
+showMyProductButton.addEventListener('click', () => { activeFilter = 'my'; filterProducts(); });
+
+// Load product data on page load
+fetchProductFromServer();
+</script>
+
 {% endblock content %}
